@@ -191,7 +191,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
           // Supressão por opt-out
           if (errorCode && isOptOutError(errorCode) && recipientPhone) {
-            await upsertPhoneSuppression(recipientPhone, 'opt_out').catch(() => {})
+            await upsertPhoneSuppression({ phone: recipientPhone, reason: 'opt_out' }).catch(() => {})
           }
 
           // Auto-supressão por falha crítica
@@ -230,7 +230,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             type: messageType,
             text,
             timestamp: message.timestamp,
-            mediaUrl: message.image?.url || message.video?.url || message.audio?.url || message.document?.url || null,
+            mediaUrl:
+            message.image?.url || message.image?.id ||
+            message.video?.url || message.video?.id ||
+            message.audio?.url || message.audio?.id ||
+            message.document?.url || message.document?.id ||
+            null,
             phoneNumberId: phoneNumberId || undefined,
           })
           console.log(`📥 [OnPremises] Inbox: conversation=${inboxResult.conversationId}, message=${inboxResult.messageId}`)
@@ -242,7 +247,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         if (text && isOptOutKeyword(text)) {
           const normalizedFrom = normalizePhoneNumber(from)
           if (normalizedFrom) {
-            await upsertPhoneSuppression(normalizedFrom, 'opt_out').catch(() => {})
+            await upsertPhoneSuppression({ phone: normalizedFrom, reason: 'opt_out' }).catch(() => {})
             console.log(`[Webhook/OnPremises] Opt-out por keyword: ${normalizedFrom}`)
           }
           continue
@@ -257,7 +262,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               const workflowClient = new WorkflowClient({ token: process.env.QSTASH_TOKEN || '' })
               const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || ''
               await workflowClient.trigger({
-                url: `${appUrl}/api/builder/workflow/${pendingConversation.workflowId}/execute`,
+                url: `${appUrl}/api/builder/workflow/${pendingConversation.workflow_id}/execute`,
                 body: { phone: normalizedFrom, message: text, conversationId: pendingConversation.id },
               })
             } catch (err) {

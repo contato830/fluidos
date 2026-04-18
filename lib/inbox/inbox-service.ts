@@ -28,6 +28,7 @@ import {
 } from './inbox-db'
 import { sendWhatsAppMessage } from '@/lib/whatsapp-send'
 import { getWhatsAppCredentials } from '@/lib/whatsapp-credentials'
+import { uploadMediaToMeta } from '@/lib/whatsapp/upload-media'
 import type {
   InboxConversation,
   InboxMessage,
@@ -159,10 +160,20 @@ export async function sendMessage(
         credentials,
       })
     } else if (['image', 'audio', 'video', 'document'].includes(messageType) && mediaUrl) {
+      // Para áudio gravado no browser (WebM/Opus), faz upload para a API da Meta para obter
+      // um media_id — necessário porque WhatsApp rejeita WebM via URL mas aceita via media_id
+      let resolvedMediaId: string | undefined
+      if (messageType === 'audio') {
+        try {
+          resolvedMediaId = await uploadMediaToMeta(mediaUrl, 'audio/ogg', credentials)
+        } catch (uploadErr) {
+          console.warn('[inbox-service] Falha no upload para Meta, tentando via URL:', uploadErr)
+        }
+      }
       whatsappResult = await sendWhatsAppMessage({
         to: conversation.phone,
         type: messageType as 'image' | 'audio' | 'video' | 'document',
-        mediaUrl,
+        ...(resolvedMediaId ? { mediaId: resolvedMediaId } : { mediaUrl }),
         caption,
         filename,
         credentials,
