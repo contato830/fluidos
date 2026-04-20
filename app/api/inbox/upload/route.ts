@@ -55,8 +55,9 @@ export async function POST(request: NextRequest) {
     const mimeType = file.type || 'application/octet-stream'
     // Normaliza MIME type removendo parâmetros de codec (ex: "audio/webm;codecs=opus" → "audio/webm")
     const baseMimeType = mimeType.split(';')[0].trim()
-    // WebM com Opus é o mesmo codec do OGG/Opus — trata como audio/ogg para compatibilidade WhatsApp
-    const normalizedMimeType = baseMimeType === 'audio/webm' ? 'audio/ogg' : baseMimeType
+    // Mantém audio/webm para que o browser consiga reproduzir corretamente.
+    // O envio para o WhatsApp usa uploadMediaToMeta() que faz re-upload direto para a API da Meta.
+    const normalizedMimeType = baseMimeType
     const category = ALLOWED_TYPES[normalizedMimeType]
 
     if (!category) {

@@ -419,19 +419,26 @@ function AudioMessage({ url }: { url: string; isVoice?: boolean }) {
   const toggle = async () => {
     const el = audioRef.current
     if (!el || isLoading) return
+
     if (isPlaying) {
       el.pause()
-    } else {
-      setHasError(false)
-      setIsLoading(true)
-      try {
-        await el.play()
-      } catch {
-        setHasError(true)
-        setIsPlaying(false)
-      } finally {
-        setIsLoading(false)
-      }
+      return
+    }
+
+    setHasError(false)
+    setIsLoading(true)
+
+    // Se o elemento está em estado de erro ou não tem source carregado, reinicia
+    if (el.error || el.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+      el.load()
+    }
+
+    try {
+      await el.play()
+    } catch {
+      // el.play() rejeita se o load falhar — onError cuidará da UI
+      setIsLoading(false)
+      setHasError(true)
     }
   }
 
@@ -455,7 +462,7 @@ function AudioMessage({ url }: { url: string; isVoice?: boolean }) {
       {/* Onda + ícone */}
       <div className="flex items-center gap-1 flex-1">
         {hasError ? (
-          <span className="text-xs text-red-400">Erro ao carregar áudio</span>
+          <span className="text-xs text-red-400/90 leading-tight">Não foi possível carregar</span>
         ) : (
           <>
             <Volume2 className="h-3.5 w-3.5 text-white/60 shrink-0" />
@@ -475,13 +482,18 @@ function AudioMessage({ url }: { url: string; isVoice?: boolean }) {
         )}
       </div>
 
+      {/* preload="none": não carrega automaticamente ao renderizar.
+          Isso evita que o proxy da Meta seja chamado para cada mensagem visível
+          e evita que o elemento entre em estado de erro antes do usuário clicar. */}
       <audio
         ref={audioRef}
         src={url}
-        preload="metadata"
+        preload="none"
         onPlay={() => { setIsPlaying(true); setIsLoading(false) }}
         onPause={() => setIsPlaying(false)}
-        onEnded={() => setIsPlaying(false)}
+        onEnded={() => { setIsPlaying(false); setIsLoading(false) }}
+        onWaiting={() => setIsLoading(true)}
+        onCanPlay={() => setIsLoading(false)}
         onError={() => { setHasError(true); setIsPlaying(false); setIsLoading(false) }}
         className="hidden"
       />
