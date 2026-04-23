@@ -14,6 +14,7 @@ import {
   createMessage,
   findMessageByWhatsAppId,
   updateMessageDeliveryStatus,
+  markMessageFailed,
   getLabels,
   createLabel,
   deleteLabel,
@@ -113,6 +114,7 @@ export interface SendMessageOptions {
   templateName?: string
   templateParams?: Record<string, string[]>
   mediaUrl?: string
+  mediaMimeType?: string
   caption?: string
   filename?: string
 }
@@ -131,6 +133,7 @@ export async function sendMessage(
     templateName,
     templateParams,
     mediaUrl,
+    mediaMimeType,
     caption,
     filename,
   } = options
@@ -164,12 +167,17 @@ export async function sendMessage(
       // um media_id — necessário porque WhatsApp rejeita WebM via URL mas aceita via media_id
       let resolvedMediaId: string | undefined
       if (messageType === 'audio') {
+        // Usa o MIME type real do arquivo; fallback para audio/ogg (Firefox) se não informado
+        const audioMimeType = mediaMimeType ?? 'audio/ogg'
+        console.log('[inbox-service] Audio upload → Meta | mimeType:', audioMimeType, '| url:', mediaUrl)
         try {
-          resolvedMediaId = await uploadMediaToMeta(mediaUrl, 'audio/ogg', credentials)
+          resolvedMediaId = await uploadMediaToMeta(mediaUrl, audioMimeType, credentials)
+          console.log('[inbox-service] Audio upload → Meta OK | mediaId:', resolvedMediaId)
         } catch (uploadErr) {
           console.warn('[inbox-service] Falha no upload para Meta, tentando via URL:', uploadErr)
         }
       }
+      console.log('[inbox-service] Enviando WhatsApp | type:', messageType, '| mediaId:', resolvedMediaId, '| mediaUrl:', resolvedMediaId ? undefined : mediaUrl)
       whatsappResult = await sendWhatsAppMessage({
         to: conversation.phone,
         type: messageType as 'image' | 'audio' | 'video' | 'document',
@@ -178,6 +186,7 @@ export async function sendMessage(
         filename,
         credentials,
       })
+      console.log('[inbox-service] Resultado WhatsApp:', JSON.stringify(whatsappResult))
     } else {
       whatsappResult = await sendWhatsAppMessage({
         to: conversation.phone,
@@ -192,6 +201,10 @@ export async function sendMessage(
     }
   }
 
+  if (whatsappResult.error) {
+    console.error('[inbox-service] Falha ao enviar mensagem WhatsApp:', whatsappResult.error)
+  }
+
   // Persist the message
   const message = await createMessage({
     conversation_id: conversationId,
@@ -203,8 +216,9 @@ export async function sendMessage(
   })
 
   // Update delivery status based on send result
+  // Nota: mensagens falhas são atualizadas por `id` (não whatsapp_message_id, que é null nesse caso)
   if (whatsappResult.error) {
-    await updateMessageDeliveryStatus(message.id, 'failed')
+    await markMessageFailed(message.id, whatsappResult.error)
   } else if (whatsappResult.messageId) {
     await updateMessageDeliveryStatus(whatsappResult.messageId, 'sent')
   }

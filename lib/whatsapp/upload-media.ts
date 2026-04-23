@@ -25,10 +25,22 @@ export async function uploadMediaToMeta(
   }
   const blob = await fileRes.blob()
 
+  // Deriva extensão a partir do MIME type para garantir consistência com o binário
+  const extMap: Record<string, string> = {
+    'audio/ogg': 'ogg',
+    'audio/webm': 'webm',
+    'audio/mpeg': 'mp3',
+    'audio/mp4': 'm4a',
+    'audio/aac': 'aac',
+    'audio/amr': 'amr',
+  }
+  const baseMime = mimeType.split(';')[0].trim()
+  const ext = extMap[baseMime] ?? 'ogg'
+
   // Envia para a API de mídia da Meta
   const form = new FormData()
   form.append('messaging_product', 'whatsapp')
-  form.append('file', new File([blob], 'audio.ogg', { type: mimeType }))
+  form.append('file', new File([blob], `audio.${ext}`, { type: baseMime }))
 
   const uploadRes = await fetch(
     `https://graph.facebook.com/${META_API_VERSION}/${phoneNumberId}/media`,

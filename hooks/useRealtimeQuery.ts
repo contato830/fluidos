@@ -146,8 +146,8 @@ export function useRealtimeQuery<TData = unknown, TError = Error>({
         })
 
         // Activate subscription
-        activateChannel(channel).catch((err) => {
-            console.error(`[useRealtimeQuery] Failed to subscribe to ${table}:`, err)
+        activateChannel(channel, undefined, { silent: true }).catch(() => {
+            console.warn(`[useRealtimeQuery] Realtime indisponível para ${table} — verifique Replication no Supabase Dashboard`)
         })
 
         // Cleanup

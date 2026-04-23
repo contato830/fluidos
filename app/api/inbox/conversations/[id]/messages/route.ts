@@ -20,6 +20,7 @@ const postSchema = z.object({
   template_name: z.string().optional(),
   template_params: z.record(z.string(), z.array(z.string())).optional(),
   media_url: z.string().url().optional(),
+  media_mime_type: z.string().max(100).optional(),
   caption: z.string().max(1024).optional(),
   filename: z.string().max(255).optional(),
 })
@@ -80,7 +81,7 @@ export async function POST(
       )
     }
 
-    const { content, message_type, template_name, template_params, media_url, caption, filename } = parsed.data
+    const { content, message_type, template_name, template_params, media_url, media_mime_type, caption, filename } = parsed.data
 
     // Validate template requirements
     if (message_type === 'template' && !template_name) {
@@ -103,6 +104,7 @@ export async function POST(
       templateName: template_name,
       templateParams: template_params,
       mediaUrl: media_url,
+      mediaMimeType: media_mime_type,
       caption,
       filename,
     })

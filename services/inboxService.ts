@@ -49,6 +49,7 @@ export interface SendMessageParams {
   template_name?: string
   template_params?: Record<string, string[]>
   media_url?: string
+  media_mime_type?: string
   caption?: string
   filename?: string
 }

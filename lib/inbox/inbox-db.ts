@@ -477,6 +477,29 @@ export async function updateMessageDeliveryStatus(
 }
 
 /**
+ * Mark a message as failed using its UUID (used when WhatsApp send fails and there is no whatsapp_message_id)
+ */
+export async function markMessageFailed(
+  messageId: string,
+  reason: string
+): Promise<void> {
+  const supabase = getClient()
+
+  const { error } = await supabase
+    .from('inbox_messages')
+    .update({
+      delivery_status: 'failed',
+      failure_reason: reason,
+      failed_at: new Date().toISOString(),
+    })
+    .eq('id', messageId)
+
+  if (error) {
+    console.error('[inbox-db] Failed to mark message as failed:', error.message)
+  }
+}
+
+/**
  * Update message with AI analysis
  */
 export async function updateMessageWithAIAnalysis(
@@ -933,6 +956,7 @@ export const inboxDb = {
   createMessage,
   findMessageByWhatsAppId,
   updateMessageDeliveryStatus,
+  markMessageFailed,
   updateMessageWithAIAnalysis,
 
   // Labels

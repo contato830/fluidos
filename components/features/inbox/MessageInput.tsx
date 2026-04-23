@@ -313,9 +313,12 @@ export function MessageInput({
   const handleAudioSend = useCallback(async (blob: Blob, durationSeconds: number) => {
     setUploadError(null)
 
-    const ext = blob.type.includes('ogg') ? 'ogg' : 'webm'
+    const baseMime = blob.type.split(';')[0].trim()
+    const extMap: Record<string, string> = { 'audio/ogg': 'ogg', 'audio/mp4': 'mp4', 'audio/webm': 'webm', 'audio/mpeg': 'mp3', 'audio/aac': 'aac' }
+    const ext = extMap[baseMime] ?? 'webm'
     const filename = `audio-${Date.now()}.${ext}`
-    const file = new File([blob], filename, { type: blob.type })
+    // Usa baseMime (sem parâmetros de codec) para compatibilidade com a API de upload
+    const file = new File([blob], filename, { type: baseMime })
 
     setIsUploading(true)
     try {

@@ -188,6 +188,7 @@ export function useInbox(options: UseInboxOptions = {}) {
           content: media.category === 'audio' ? '' : (content || ''),
           message_type: media.category,
           media_url: media.url,
+          media_mime_type: media.mimeType,
           caption: content || undefined,
           filename: media.filename,
         })
